@@ -610,14 +610,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const cornerTL = this.add.image(0,  0,  "GJ_GameSheet03", "GJ_sideArt_001.png")
         .setScrollFactor(0).setDepth(100).setOrigin(0, 0).setFlipY(true)
       const cornerBL = this.add.image(0,  sh, "GJ_GameSheet03", "GJ_sideArt_001.png")
-        .setScrollFactor(0).setDepth(152).setOrigin(0, 1).setFlipX(false)
+        .setScrollFactor(0).setDepth(152).setOrigin(0, 1)
+      const treasureroom = this.add.image(1095, 40, "GJ_GameSheet03", "GJ_lock_001.png")
+        .setScrollFactor(0).setDepth(104).setTint(0x666666);
+      const vaultsecret = this.add.image(1095, 601, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
+        .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666);
 
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
-        .setScrollFactor(0).setDepth(104).setFlipX(true).setFlipY(true)
+        .setScrollFactor(0).setDepth(104).setFlipY(true).setFlipX(true)
         .setRotation(Math.PI).setInteractive();
       this._makeBouncyButton(backBtn, 1, () => this._closeCreatorMenu());
 
-      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn];
+      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, vaultsecret];
 
       const menuButtons = [
         "GJ_createBtn_001.png",
@@ -683,7 +687,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             this._openSavedLevelsScene();
           }, () => true);
         } else {
-          btn.setTint(0x666666);
+          btn.postFX.addColorMatrix().grayscale(1);
+          btn.setTint(0xafafaf);
         }
         this._creatorOverlayObjects.push(btn);
       });
@@ -2817,11 +2822,60 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._iconOverlay = overlay;
 
       const blocker = this.add.zone(sw / 2, sh / 2, sw, sh)
-        .setScrollFactor(0).setDepth(101).setInteractive();
+        .setScrollFactor(0).setDepth(100).setInteractive();
 
-      const titleTxt = this.add.bitmapText(sw / 2, 60, "goldFont", "Icon Selector", 32)
-        .setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(105);
+      const titleMaxLength = 20;
+      const titleAllowedChars = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+      let titleText = String(localStorage.getItem("playerName") || "Player").replace(/\r|\n/g, "").slice(0, titleMaxLength);
+      if (!titleText || titleText.trim() === "") titleText = "Player";
 
+      const titleTxt = this.add.bitmapText(sw / 2, 80, "bigFont", titleText, 50)
+        .setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(105).setInteractive();
+      let titleFocused = false;
+
+      const _updateTitleText = () => {
+        const safeTitle = titleText.slice(0, titleMaxLength);
+        titleText = safeTitle;
+        titleTxt.setText(safeTitle || "");
+        localStorage.setItem("playerName", safeTitle || "Player");
+      };
+
+      const _focusTitle = () => {
+        titleFocused = true;
+      };
+
+      const _blurTitle = () => {
+        titleFocused = false;
+        if (!titleText.trim()) {
+          titleText = "Player";
+          titleTxt.setText("Player");
+          localStorage.setItem("playerName", "Player");
+        }
+      };
+
+      titleTxt.on("pointerdown", () => _focusTitle());
+      blocker.on("pointerdown", () => _blurTitle());
+
+      const _onTitleKeyDown = (event) => {
+        if (!titleFocused || !this._iconOverlay) return;
+        event.stopPropagation();
+        if (event.key === "Backspace") {
+          if (titleText.length > 0) {
+            titleText = titleText.slice(0, -1);
+            _updateTitleText();
+          }
+        } else if (event.key === "Enter") {
+          _blurTitle();
+        } else if (event.key.length === 1 && titleAllowedChars.includes(event.key) && !event.ctrlKey && !event.metaKey) {
+          if (titleText.length < titleMaxLength) {
+            titleText += event.key;
+            _updateTitleText();
+          }
+        }
+      };
+
+      window.addEventListener("keydown", _onTitleKeyDown);
+      this._iconTitleKeyHandler = _onTitleKeyDown;
       this._iconOverlayObjects = [overlay, blocker, titleTxt];
 
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
@@ -2830,6 +2884,16 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setRotation(Math.PI).setInteractive();
       this._iconOverlayObjects.push(backBtn);
       this._makeBouncyButton(backBtn, 1, () => this._closeIconSelector());
+
+      const Pathicon = this.add.image(60, 165, "GJ_GameSheet03", "GJ_shardsBtn_001.png")
+        .setScrollFactor(0).setDepth(104).setTint(0x666666)
+        .setInteractive();
+      this._iconOverlayObjects.push(Pathicon);
+      this._makeBouncyButton(Pathicon, 1, () => this.openshardmenu());
+
+      const yourname = this.add.image(670, 15,  "GJ_GameSheet03", "GJ_nameTxt_001.png")
+        .setScrollFactor(0).setDepth(100).setOrigin(0, 0);
+      this._iconOverlayObjects.push(yourname);
 
       const topBarHeight = 100;
       const lineY = topBarHeight + 100;
@@ -3435,6 +3499,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           }
           this._iconOverlayObjects = null;
         }
+        if (this._iconTitleKeyHandler) {
+          window.removeEventListener("keydown", this._iconTitleKeyHandler);
+          this._iconTitleKeyHandler = null;
+        }
         this._iconOverlay = null;
       };
       if (silent) { destroy(); return; }
@@ -3939,6 +4007,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         staticGround2Tiles.push(gt2);
       }
     }
+    const infoBtn = this.add.image(sw - 40, 40, "GJ_GameSheet03", "GJ_infoIcon_001.png")
+        .setScrollFactor(0).setTint(0x666666).setDepth(152)
+        .setInteractive();
+      this._makeBouncyButton(infoBtn, 1, () => this.levelstats());
     const floorLineFrame = this.textures.getFrame("GJ_WebSheet", "floorLine_01_001.png");
     const floorLineW = floorLineFrame ? floorLineFrame.width : 888;
     const floorLineScale = sw / floorLineW;
@@ -3967,7 +4039,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._closeLevelSelect();
       }
     });
-    const infoBtn = this.add.image(sw - 40, 40, "GJ_GameSheet03", "GJ_infoIcon_001.png").setScrollFactor(0).setDepth(154).setInteractive();
     const arrowL = this.add.image(55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(true).setInteractive();
     const arrowR = this.add.image(sw - 55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(false).setInteractive();
     const allLevels = window.allLevels || [];
@@ -4245,7 +4316,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const scaledGap = gap * groupScale;
       const totalW = scaledIconW + scaledGap + scaledLabelW;
       const groupStartX = cardX - totalW / 2;
-      demonIcon.setScale((finalIconScale * groupScale)+0.2);
+      demonIcon.setScale((finalIconScale * groupScale)+0.1);
       demonIcon.setPosition(groupStartX + scaledIconW / 2 - cardX, 0);
       nameLabel.setScale(groupScale);
       nameLabel.setPosition(groupStartX + scaledIconW + scaledGap - cardX, 0);
@@ -4818,7 +4889,7 @@ _buildSettingsPopup() {
         this._settingsPopup = null;
     });
 
-    const pages = ["Gameplay", "Visual", "Advanced"];
+    const pages = ["Gameplay", "Visual", "Advanced", "Performance"];
     let currentPage = 0;
     const pageTitle = this.add.bitmapText(0, -(panelHeight / 2) + 45, "bigFont", pages[currentPage], 40).setOrigin(0.5);
     innerContainer.add(pageTitle);
@@ -4873,13 +4944,26 @@ _buildSettingsPopup() {
         return String(key);
     }
 
-    var infotextstuffsiwannabedonewiththis = {
+    var infotextstrings = {
         "Enable Portal Guide": "Enables extra indicators on portals.",
         "Enable Orb Guide": "Enables extra indicators on orbs.",
         "Practice Music Bypass": "Plays normal mode music in practice mode.",
         "Show Percentage": "Shows the percentage you are at in a level.",
         "Percentage Decimals": "Shows decimals in level progress.",
+        "Startpos Switcher": "Switches between start positions in a level.",
+        "Noclip": "Allows you to phase throught mostly anything that would kill you normally.",
+        "Noclip Accuracy": "Flashes your screen red when you would've died with noclip.",
+        "Macro Bot": "Lets you record and replay your inputs for a level.",
+        "Show Hitboxes": "Shows you the hitboxes for objects and your player.",
+        "Hitbox Trail": "Shows the hitbox of exactly where your hitbox has been.",
         "Hitboxes on Death": "Shows hitboxes upon death in both normal and practice mode.",
+        "Show FPS": "Shows the frames per second your game is running at.",
+        "Solid Wave Trail": "Removes the extra details of the wave trail.",
+        "Show CPS": "Shows when you click in a level in the top left of your screen.",
+        "Show Glow": "Shows glow for basic object sets.",
+        "Use Proxy (for schools)": "Enables a proxy for a better chance to see online levels when blocked.",
+        "LDM": "Removes many effects, objects, and other things to improve performance.",
+        "Cull Distance": "Changes how many objects are shown. [DOES NOT SAVE!!]"
     };
 
     const createInfoButton = (container, x, y, infoTextOrKey, scale) => {
@@ -4888,8 +4972,8 @@ _buildSettingsPopup() {
         var Infotext = null;
         if (window.settingInfoText && window.settingInfoText[words]) {
             Infotext = window.settingInfoText[words];
-        } else if (infotextstuffsiwannabedonewiththis[words]) {
-            Infotext = infotextstuffsiwannabedonewiththis[words];
+        } else if (infotextstrings[words]) {
+            Infotext = infotextstrings[words];
         }
         var infoText = Infotext ? Infotext : key;
         if (!infoText) {
@@ -4905,9 +4989,15 @@ _buildSettingsPopup() {
             this.InfoBoxDoAThing(infoText);
         });
     };
-    const createNumberInput = (container, x, y, label, getVal, setVal) => {
+    const createNumberInput = (container, x, y, label, getVal, setVal, minVal = 0, maxVal = 20, integer = true, hasInfoBox = false, infoText = null) => {
         const txt = this.add.bitmapText(x + textOffset, y, "bigFont", label, 25).setOrigin(0, 0.5);
         container.add(txt);
+
+        if (hasInfoBox) {
+            if (infoText) {
+                createInfoButton(container, x + checkOffset - 38, y - 32, infoText, 0.45);
+            }
+        }
 
         const boxX = x + checkOffset;
         const boxY = y;
@@ -4924,7 +5014,8 @@ _buildSettingsPopup() {
             .setInteractive({ useHandCursor: true });
         container.add(hitArea);
 
-        let initialVal = getVal() || 1;
+        let initialVal = getVal();
+        if (initialVal === undefined || initialVal === null) initialVal = minVal;
         const valueTxt = this.add.bitmapText(boxX, boxY, "bigFont", initialVal.toString(), 28)
             .setOrigin(0.5);
         container.add(valueTxt);
@@ -4943,13 +5034,18 @@ _buildSettingsPopup() {
         const commitValue = () => {
             isFocused = false;
 
-            let val = parseFloat(internalString);
-            if (isNaN(val)) val = 1;
+            let val;
+            if (integer) {
+                val = parseInt(internalString, 10);
+            } else {
+                val = parseFloat(internalString);
+            }
+            if (isNaN(val)) val = minVal;
 
-            if (val < 0.1) val = 0.1;
-            if (val > 10) val = 10;
+            if (val < minVal) val = minVal;
+            if (val > maxVal) val = maxVal;
 
-            internalString = val.toString();
+            internalString = integer ? String(Math.round(val)) : String(val);
             valueTxt.setText(internalString);
             
             setVal(val);
@@ -4995,19 +5091,20 @@ _buildSettingsPopup() {
 
             if (/^[0-9.]$/.test(key)) {
                 event.preventDefault();
-                
-                if (key === "." && internalString.includes(".")) return;
 
-                const parts = internalString.split('.');
-                
-                if (key === ".") {
-                    if (parts[0].length === 0) return;
+                if (integer) {
+                    if (key === ".") return;
+                    internalString += key;
                 } else {
-                    if (parts.length === 1 && parts[0].length >= 2) return;
-                    if (parts.length === 2 && parts[1].length >= 2) return;
+                    if (key === ".") {
+                        if (internalString.includes(".")) return;
+                        if (internalString.length === 0) return;
+                        internalString += key;
+                    } else {
+                        internalString += key;
+                    }
                 }
 
-                internalString += key;
                 updateDisplay();
             }
         };
@@ -5052,35 +5149,52 @@ _buildSettingsPopup() {
                 if (this._startPosGui) this._startPosGui.setVisible(v);
                 const total = this._level.getStartPositions().length;
                 if (this._startPosText) this._startPosText.setText(`0/${total}`);
-            }
+            },
+            undefined,
+            25,
+            "Startpos Switcher"
         );
 
         createToggle(container, column1X, startY + (spacingY * 3), "Noclip", 
             () => window.noClip, 
             (v) => window.noClip = v,
-            (v) => { if (this._noclipIndicator) this._noclipIndicator.setVisible(v); }
+            (v) => { if (this._noclipIndicator) this._noclipIndicator.setVisible(v); },
+            undefined,
+            25,
+            "Noclip"
         );
         
         createToggle(container, column1X, startY + (spacingY * 4), "Noclip Accuracy",
             () => window.noClipAccuracy,
-            (v) => window.noClipAccuracy = v
+            (v) => window.noClipAccuracy = v,
+            null,
+            25,
+            true,
+            "Noclip Accuracy"
         );
         
         createToggle(container, column1X, startY + (spacingY * 5), "Macro Bot",
             () => window.macroBot,
-            (v) => window.macroBot = v
+            (v) => window.macroBot = v,
+            null,
+            25,
+            true,
+            "Macro Bot"
         );
 
         createNumberInput(container, column2X, startY, "Speedhack", 
-            () => window.speedHack, 
-            (v) => window.speedHack = v
+          () => window.speedHack, 
+          (v) => window.speedHack = v,
+          0.1,
+          10,
+          false
         );
 
-        createToggle(container, column2X, startY + spacingY, "Practice Music Bypass",
-            () => window.practiceMusicBypass,
+        createToggle(container, column2X, startY + spacingY, "Practice Music Sync",
+            () => window.practiceMusicSync,
             (v) => {
-                const changed = !!window.practiceMusicBypass !== !!v;
-                window.practiceMusicBypass = v;
+                const changed = !!window.practiceMusicSync !== !!v;
+                window.practiceMusicSync = v;
                 if (changed && !this._menuActive && this._practicedMode?.practiceMode) {
                     this._practiceBypassPending = true;
                 }
@@ -5102,13 +5216,19 @@ _buildSettingsPopup() {
                 } else {
                     this._player.drawHitboxes(this._player._hitboxGraphics, this._cameraX, this._cameraY);
                 }
-            }
+            },
+            undefined,
+            25,
+            "Show Hitboxes"
         );
 
         createToggle(container, column1X, startY + (spacingY), "Hitbox Trail", 
             () => window.showHitboxTrail, 
             (v) => window.showHitboxTrail = v,
-            (v) => { if (window.showHitboxes) this._player.drawHitboxes(this._player._hitboxGraphics, this._cameraX, this._cameraY); }
+            (v) => { if (window.showHitboxes) this._player.drawHitboxes(this._player._hitboxGraphics, this._cameraX, this._cameraY); },
+            undefined,
+            25,
+            "Hitbox Trail"
         );
         
         createToggle(container, column1X, startY + (spacingY * 2), "Hitboxes on Death", 
@@ -5123,23 +5243,37 @@ _buildSettingsPopup() {
         createToggle(container, column1X, startY + (spacingY * 3), "Show FPS", 
             () => this._fpsText.visible, 
             (v) => this._fpsText.visible = v,
-            (v) => { if (this._fpsText) this._fpsText.setVisible(v); }
+            (v) => { if (this._fpsText) this._fpsText.setVisible(v); },
+            undefined,
+            25,
+            "Show FPS"
         );
 
         createToggle(container, column1X, startY + (spacingY * 4), "Solid Wave Trail", 
             () => window.solidWave, 
-            (v) => window.solidWave = v
+            (v) => window.solidWave = v,
+            null,
+            25,
+            true,
+            "Solid Wave Trail"
         );
         
         createToggle(container, column1X, startY + (spacingY * 5), "Show CPS",
             () => window.showCPS,
-            (v) => window.showCPS = v
+            (v) => window.showCPS = v,
+            null,
+            25,
+            true,
+            "Show CPS"
         );
 
         createToggle(container, column2X, startY, "Show Glow", 
             () => window.showGlow, 
             (v) => window.showGlow = v,
-            () => { if (this._level && this._level._updateGlowVisibility) this._level._updateGlowVisibility(); }
+            () => { if (this._level && this._level._updateGlowVisibility) this._level._updateGlowVisibility(); },
+            undefined,
+            25,
+            "Show Glow"
         );
 
         createToggle(container, column2X, startY + spacingY, "Create Object ID labels", 
@@ -5153,7 +5287,7 @@ _buildSettingsPopup() {
             (v) => window.showObjectIds = v,
             null, 17
         );
-                createToggle(container, column2X, startY + (spacingY * 3), "Enable Portal Guide", 
+        createToggle(container, column2X, startY + (spacingY * 3), "Enable Portal Guide", 
             () => window.enablePortalGuide, 
             (v) => window.enablePortalGuide = v,
             null, 22,
@@ -5174,7 +5308,30 @@ _buildSettingsPopup() {
         createToggle(container, column1X, startY, "Use Proxy (for schools)",
             () => !window.useDirectInternet,
             (v) => { window.useDirectInternet = !v; },
-            null, 22
+            null,
+            22,
+            true,
+            "Use Proxy (for schools)"
+        );
+    };
+
+        const buildPerformancePage = (container) => {
+        createToggle(container, column1X, startY, "Low Detail Mode", 
+            () => window.enableLDM, 
+            (v) => window.enableLDM = v,
+            null,
+            26,
+            true,
+            "LDM"
+        );
+        createNumberInput(container, column1X, startY + (spacingY * 1), "Cull Distance",
+          () => (typeof window.cullDistance !== 'undefined' ? window.cullDistance : 3),
+          (v) => window.cullDistance = v,
+          0,
+          3,
+          true,
+          true,
+          "Cull Distance"
         );
     };
 
@@ -5187,6 +5344,7 @@ _buildSettingsPopup() {
         if (idx === 0) buildGameplayPage(pageContainer);
         else if (idx === 1) buildVisualPage(pageContainer);
         else if (idx === 2) buildAdvancedPage(pageContainer);
+        else if (idx === 3) buildPerformancePage(pageContainer);
     };
 
     buildPage(0);
@@ -5225,13 +5383,15 @@ _buildSettingsPopup() {
         showCPS: window.showCPS,
         speedHack: window.speedHack,
         macroBot: window.macroBot,
-        practiceMusicBypass: window.practiceMusicBypass,
+        practiceMusicSync: window.practiceMusicSync,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
         enablePortalGuide: window.enablePortalGuide,
         enableOrbGuide: window.enableOrbGuide,
-        settingInfoText: window.settingInfoText || {}
+        cullDistance: window.cullDistance,
+        settingInfoText: window.settingInfoText || {},
+        enableLDM: window.enableLDM,
     };
     localStorage.setItem("gd_settings", JSON.stringify(settings));
     localStorage.setItem("gd_useDirectInternet", String(!!window.useDirectInternet));
@@ -5254,12 +5414,14 @@ _buildSettingsPopup() {
         showCPS: false,
         speedHack: 1.0,
         macroBot: false,
-        practiceMusicBypass: false,
+        practiceMusicSync: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
         enablePortalGuide: true,
-        enableOrbGuide: false
+        enableOrbGuide: false,
+        enableLDM: false,
+        cullDistance: 3
     };
 
     const data = { ...defaults, ...(saved ? JSON.parse(saved) : {}) };
@@ -5277,16 +5439,18 @@ _buildSettingsPopup() {
     window.showCPS = data.showCPS;
     window.speedHack = data.speedHack;
     window.macroBot = data.macroBot;
-    window.practiceMusicBypass = !!data.practiceMusicBypass;
+    window.practiceMusicSync = !!data.practiceMusicSync;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
     window.showObjectIds = data.showObjectIds;
     window.enablePortalGuide = data.enablePortalGuide;
     window.enableOrbGuide = data.enableOrbGuide;
+    window.cullDistance = typeof data.cullDistance !== 'undefined' ? data.cullDistance : 3;
     window.settingInfoText = data.settingInfoText || {};
     window.useDirectInternet = !!data.useDirectInternet;
     localStorage.setItem("gd_useDirectInternet", String(!!window.useDirectInternet));
+    window.enableLDM = !!data.enableLDM;
   }
   _buildMacroPopup() {
       if (this._macroPopup) return;
@@ -5471,7 +5635,7 @@ _buildSettingsPopup() {
     bounceContainer.add(closeBtn);
     this._expandHitArea(closeBtn, 2);
     this._makeBouncyButton(closeBtn, 0.8, () => this._closeInfoPopup());
-    const title = this.add.bitmapText(0, -124, "bigFont", "Credits", 30).setOrigin(0.5, 0.5);
+    const title = this.add.bitmapText(0, -124, "bigFont", "Credits", 42).setOrigin(0.5, 0.6);
     bounceContainer.add(title);
     const scrollAreaW = 420;
     const scrollAreaH = 230;
@@ -5491,7 +5655,9 @@ _buildSettingsPopup() {
       { text: "bog, Lasokar, AntiMatter,", scale: 0.7, font: "goldFont" },
       { text: "arbstro, and aloaf", scale: 0.7, font: "goldFont" },
       { text: "Contributors:", scale: 0.9, font: "bigFont" },
-      { text: "t0nchi7, Itzar and CoraBitz", scale: 0.7, font: "goldFont" },
+      { text: "t0nchi7, Itzar, zainojdaf,", scale: 0.7, font: "goldFont" },
+      { text: "Ameth7st, and CoraBitz", scale: 0.7, font: "goldFont" },
+      { text: "we love you cora <3", scale: 0.4, font: "bigFont" },
       { text: "© 2026 RobTop Games. All rights reserved.", scale: 0.4, font: "Arial", color: 0x000000 },
     ]; 
     let yPos = 0;
@@ -5526,7 +5692,6 @@ _buildSettingsPopup() {
       const bwx = xPos;
       const bwy = popupHeight;
       maskShape.clear();
-      maskShape.fillStyle(0xffffff, 1);
       maskShape.fillRect(
         bwx + (scrollAreaX - scrollAreaW / 2) * s,
         bwy + (scrollAreaY - scrollAreaH / 2) * s,
@@ -5639,7 +5804,7 @@ _buildSettingsPopup() {
     const boxWidth = 720;
     const boxHeight = 280;
     box.add(this._drawScale9(0, 0, boxWidth, boxHeight, "square01_001", cornerRadius, 0xffffff, 1));
-    box.add(this.add.bitmapText(0, -90, "goldFont", "Info", 45).setOrigin(0.5));
+    box.add(this.add.bitmapText(-4, -90, "goldFont", "Info", 45).setOrigin(0.5));
 
     const textAreaW = boxWidth - 60;
     const textAreaH = boxHeight - 140;
@@ -5889,7 +6054,7 @@ _buildSettingsPopup() {
     bounceContainer.add(closeBtn);
     this._expandHitArea(closeBtn, 2);
     this._makeBouncyButton(closeBtn, 0.8, () => this._closeUpdateLogPopup());
-    const title = this.add.bitmapText(0, -124, "bigFont", "BETA (EXPECT BUGS)", 30).setOrigin(0.5, 0.5).setTint(0xff6666);
+    const title = this.add.bitmapText(0, -124, "bigFont", "BETA (EXPECT BUGS)", 33).setOrigin(0.5, 0.55).setTint(0xff6666);
     bounceContainer.add(title);
     const scrollAreaW = 420;
     const scrollAreaH = 230;
@@ -5908,17 +6073,30 @@ _buildSettingsPopup() {
       0xFF008E - pink dev entries
     */
     const updateEntries = [
-      { text: "Update Log", scale: 0.85, font: "goldFont" },
-      { text: "slopes (very buggy)", scale: 0.7, color: 0xff9944 },
-      { text: "THEY WILL BE FIXED", scale: 0.7, },
-      { text: "OVER TIME", scale: 0.7, },
-      { text: "slopes work in imported", scale: 0.7, },
+      { text: "Update Log", scale: 1, font: "goldFont" },
+      { text: "Credits menu fixed :3", scale: 0.75, },
+      { text: "Small Icon Kit changes", scale: 0.75, },
+      { text: "Low Detail Mode", scale: 0.75, },
+      { text: "Object culling changes", scale: 0.75, },
+      { text: "MOST Animated objects", scale: 0.75, },
+      { text: "Added a bunch of missing buttons", scale: 0.7, },
+      { text: "Level select info icon is bouncy now", scale: 0.65, },
+      { text: "Rotation for deco and saws", scale: 0.75, },
+      { text: "Particlesheet added <3", scale: 0.75, },
+      { text: "Better ball rotation ", scale: 0.75, },
+      { text: "Fixed ball noclip too.", scale: 0.75, },
+      { text: "Editor placing offsets", scale: 0.75, },
+      { text: "Pulsing rods reworked a lil", scale: 0.75, },
+      { text: "Breakable blocks break now.", scale: 0.75, },
+      { text: "Fixed objects not showing in editor", scale: 0.65, },
+      { text: "^ I, Amethyst, did all this btw. ^", scale: 0.6, color: 0x9966cc},
+      { text: "Slopes (very buggy)", scale: 0.75, color: 0xff9944 },
+      { text: "THEY WILL BE FIXED-", scale: 0.75, },
+      { text: "OVER TIME.", scale: 0.75, },
+      { text: "Slopes work in imported-", scale: 0.75, },
       { text: "levels now (thanks lasokadadyy)", scale: 0.7, },
-      { text: "fixed SOME objects", scale: 0.7 },
-      { text: "-pinkdih", scale: 0.7, color: 0xFF008E },
-      { text: "fixed a lot more objects", scale: 0.55 },
-      { text: "reworked the ball's rolling physics", scale: 0.55 },
-      { text: "particles soon", scale: 0.55, color: 0x708090},
+      { text: "Fixed SOME objects", scale: 0.75 },
+      { text: "-pinkdih", scale: 0.65, color: 0xFF008E }
     ]; 
     let yPos = 0;
     const lineItems = [];
@@ -6860,6 +7038,36 @@ _buildSettingsPopup() {
       playerSpeed = SpeedPortal.FOUR_TIMES;
     }
     this._level.resetObjects();
+    this._level._setRodframe?.(this._levelAttempts);
+    try {
+      if (this._level && Array.isArray(this._level._sawSprites)) {
+        const groups = new Map();
+        for (const s of this._level._sawSprites) {
+          if (!s) continue;
+          const id = s._eeObjectId ?? null;
+          if (!groups.has(id)) groups.set(id, []);
+          groups.get(id).push(s);
+        }
+        for (const [id, arr] of groups.entries()) {
+          if (!arr || !arr.length) continue;
+          const sample = arr[0];
+          const base = Math.abs(sample._Sawrotationspeed) || 0.0034;
+          const sign = (Math.random() < 0.5) ? -1 : 1;
+          const newSpeed = sign * (base + (Math.random() * base * 0.2 - base * 0.1));
+          const newPhase = Math.random() * Math.PI * 2;
+          const newAmp = sample._SawRandom2 ?? (base * 0.12);
+          const baseAngle = Math.random() * Math.PI * 2;
+          for (const spr of arr) {
+            if (!spr) continue;
+            spr._Sawrotationspeed = newSpeed;
+            spr._SawRandom1 = newPhase;
+            spr._SawRandom2 = newAmp;
+            const offset = typeof spr._Sawoffset === "number" ? spr._Sawoffset : 0;
+            spr.rotation = baseAngle + offset;
+          }
+        }
+      }
+    } catch (e) { }
     this._level.shiftGroundTiles(this._cameraX - _0x2ba78a);
     this._level.resetGroundState();
     this._level.resetColorTriggers();
@@ -7180,7 +7388,7 @@ _buildSettingsPopup() {
     this._updateBackground();
     this._applyMirrorEffect();
     this._practiceBypassPending = false;
-    if (window.practiceMusicBypass) {
+    if (window.practiceMusicSync) {
       this._audio.startMusic(this._getSongOffsetForWorldX(checkpoint.x));
     } else if (!this._audio.musicPlaying) {
       this._audio.startMusic();
@@ -7706,23 +7914,41 @@ _buildSettingsPopup() {
     this._playTime += deltaTime / 1000;
     this._audio.update(deltaTime / 1000);
     
-    window._animTimer += deltaTime;
-    for (let _as of window._animatedSprites) {
-      if (window._animTimer - (_as._lastAnimSwap || 0) >= _as._animInterval) {
-        _as._lastAnimSwap = window._animTimer;
-        _as._animIdx = (_as._animIdx + 1) % _as._animFrames.length;
-        let _fr = getAtlasFrame(_as._animScene, _as._animFrames[_as._animIdx]);
-        if (_fr) {
-          try {
-            _as.setTexture(_fr.atlas, _fr.frame);
-          } catch(e){}
+    if (!window.enableLDM) {
+      window._animTimer += deltaTime;
+      for (let _as of window._animatedSprites) {
+        if (window._animTimer - (_as._lastAnimSwap || 0) >= _as._animInterval) {
+          _as._lastAnimSwap = window._animTimer;
+          _as._animIdx = (_as._animIdx + 1) % _as._animFrames.length;
+          let _fr = getAtlasFrame(_as._animScene, _as._animFrames[_as._animIdx]);
+          if (_fr) {
+            try {
+              _as.setTexture(_fr.atlas, _fr.frame);
+            } catch(e){}
+          }
         }
       }
+    } else {
+      window._animTimer += deltaTime;
     }
-    if (this._level && this._level._sawSprites) {
-      const sawRotation = deltaTime * 0.003;
+    if (this._level && this._level._sawSprites && !window.enableLDM) {
+      const sawTimer = (window._animTimer || 0) / 1000;
       for (let _saw of this._level._sawSprites) {
-        if (_saw && _saw.active) _saw.rotation += sawRotation;
+        if (!_saw || !_saw.active || !_saw.visible) continue;
+        const baseSpeed = _saw._Sawrotationspeed ?? 0.0034;
+        let sawRotationSpeed = baseSpeed;
+        if (_saw._SawRandom1 !== undefined) {
+          sawRotationSpeed += Math.sin(sawTimer + _saw._SawRandom1) * (_saw._SawRandom2 || 0);
+        }
+        _saw.rotation += deltaTime * sawRotationSpeed;
+      }
+    }
+    if (this._level && this._level._orbSprites) {
+      const gravityGuideRotation = (this._state?.gravityFlipped ? Math.PI : 0);
+      for (let _oSpr of this._level._orbSprites) {
+        if (!_oSpr || !_oSpr.active || !_oSpr._eeOrbGuide || !_oSpr._OrbGuideGrav) continue;
+        const baseRotation = Number.isFinite(_oSpr._OrbGuideRotation) ? _oSpr._OrbGuideRotation : 0;
+        _oSpr.rotation = baseRotation + gravityGuideRotation;
       }
     }
     this._level.updateAudioScale(this._audio.getMeteringValue());

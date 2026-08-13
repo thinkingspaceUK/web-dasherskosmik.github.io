@@ -45,6 +45,7 @@ class PlayerState {
     this.ballRotateOpposite = false;
     this.ballNormalRotate = 1;
     this.ballHitPad = false;
+    this.ballRotation2 = 0;
   }
 }
 
@@ -1571,6 +1572,22 @@ class PlayerObject {
       return;
     }
 
+    if (window.enableLDM) {
+      if (this._particleEmitter) this._particleEmitter.stop();
+      this._particleActive = false;
+      if (this._flyParticleEmitter) this._flyParticleEmitter.stop();
+      this._flyParticleActive = false;
+      if (this._flyParticle2Emitter) this._flyParticle2Emitter.stop();
+      this._flyParticle2Active = false;
+      if (this._shipDragEmitter) this._shipDragEmitter.stop();
+      this._shipDragActive = false;
+      this._streak.stop();
+      this._streak.reset();
+      this._waveTrail.stop();
+      this._waveTrail.reset();
+      return;
+    }
+
     if (this.p.isDead) {
       return;
     }
@@ -2009,6 +2026,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.ballRotateOpposite = false;
     this.p.ballNormalRotate = 1;
     this.p.ballHitPad = false;
+    this.p.ballRotation2 = 0;
     this.p.onGround = false;
     this.p.canJump = false;
     this.p.isJumping = false;
@@ -2032,6 +2050,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.ballRotateOpposite = false;
     this.p.ballNormalRotate = 1;
     this.p.ballHitPad = false;
+    this.p.ballRotation2 = 0;
     this.p.onGround = false;
     this.p.canJump = false;
     this.p.isJumping = false;
@@ -2292,11 +2311,13 @@ if (this.p.isFlying || this.p.isUfo) {
     }
     this.stopRotation();
     if (_0x4a38a5 && !this.p.isFlying && !this.p.isWave && !this.p.isSpider && !this._scene?._editorPlaytestActive) {
-      this._landIdx = !this._landIdx;
-      const _0x31584b = this._landIdx ? this._landEmitter1 : this._landEmitter2;
-      const _0x2248d5 = this._scene._playerWorldX;
-      const _0x17e0bb = this.p.gravityFlipped ? b(this.p.y) - 30 : b(this.p.y) + 30;
-      _0x31584b.explode(10, _0x2248d5, _0x17e0bb);
+      if (!window.enableLDM) {
+        this._landIdx = !this._landIdx;
+        const _0x31584b = this._landIdx ? this._landEmitter1 : this._landEmitter2;
+        const _0x2248d5 = this._scene._playerWorldX;
+        const _0x17e0bb = this.p.gravityFlipped ? b(this.p.y) - 30 : b(this.p.y) + 30;
+        _0x31584b.explode(10, _0x2248d5, _0x17e0bb);
+      }
     }
   }
   killPlayer() {
@@ -3217,18 +3238,23 @@ if (this.p.isFlying || this.p.isUfo) {
     if (this.p.ballRotateOpposite) {
       rollDir = -rollDir;
     }
-    const groundSpeedFactor = 0.45;
-    let airSpeedFactor = this.p.ballRotateOpposite ? 0.25 : 0.45;
+    const groundSpeedFactor = 0.48;
+    let airSpeedFactor = this.p.ballRotateOpposite ? 0.27 : 0.48;
     if (this.p.isDashing) {
       const dashSpeed = Math.abs(this.p.dashYVelocity || this.p.yVelocity || 0);
       const speedScale = Math.max(0.15, Math.min(1, dashSpeed / 24));
-      airSpeedFactor = 0.3 + speedScale * 0.3;
+      airSpeedFactor = 0.32 + speedScale * 0.32;
     } else if (this.p.ballHitPad) {
-      airSpeedFactor *= 1.3;
+      airSpeedFactor *= 1.2;
     }
     const speedFactor = onSurface ? groundSpeedFactor : airSpeedFactor;
+    let bidenblast= 1;
+    if (this.p.ballRotation2 > 0) {
+      bidenblast= 2.1;
+      this.p.ballRotation2 -= 1;
+    }
     const miniRollScale = this.p.isMini ? 1 / 0.8 : 1;
-    this._rotation += _0x1dd8af / (g / 2) * rollDir * speedFactor * miniRollScale;
+    this._rotation += _0x1dd8af / (g / 2) * rollDir * speedFactor * bidenblast* miniRollScale;
   }
   updateShipRotation(_0x217ad3) {
     let _0x48f422 = -(this.p.y - this.p.lastY);
@@ -3240,6 +3266,14 @@ if (this.p.isFlying || this.p.isUfo) {
       this._rotation = this.slerp2D(this._rotation, _0x5e6a2b, _0x1857d4);
     }
   }
+  breakabletheblock(gameObj) {
+    if (!gameObj) return false;
+    if (parseInt(gameObj.objid ?? 0, 10) !== 143) return false;
+    const linkedObjectId = Number.isInteger(gameObj._eeObjectId) ? gameObj._eeObjectId : null;
+    if (linkedObjectId === null) return false;
+    return this._gameLayer?._breakblock?.(linkedObjectId) ?? false;
+  }
+
   playerIsFalling() {
     if (this.p.gravityFlipped) {
       return this.p.yVelocity > p;
@@ -3557,7 +3591,9 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.canJump = false;
         this.p.isJumping = true;
         try {
-          this._flyParticle2Emitter.explode(6, this._scene._playerWorldX, b(this.p.y) + (this.p.gravityFlipped ? -18 : 18));
+          if (!window.enableLDM) {
+            this._flyParticle2Emitter.explode(6, this._scene._playerWorldX, b(this.p.y) + (this.p.gravityFlipped ? -18 : 18));
+          }
         } catch(e) {}
       }
     }
@@ -4103,6 +4139,7 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isBall) {
               this.p.ballShouldRotate = true;
               this.p.ballRotateOpposite = true;
+              this.p.ballRotation2 = 10;
             }
             this.flipGravity(false, 0.5);
           }
@@ -4113,6 +4150,7 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isBall) {
               this.p.ballShouldRotate = true;
               this.p.ballRotateOpposite = true;
+              this.p.ballRotation2 = 10;
             }
             this.flipGravity(true, 0.5);
           }
@@ -4123,6 +4161,7 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isBall) {
               this.p.ballShouldRotate = true;
               this.p.ballRotateOpposite = true;
+              this.p.ballRotation2 = 10;
             }
             this.flipGravity(!this.p.gravityFlipped, 0.5);
           }
@@ -4210,6 +4249,8 @@ if (this.p.isFlying || this.p.isUfo) {
               this.p.onGround = false;
               this.p.canJump = false;
               if (this.p.isBall) {
+                const gravityDir = this.p.gravityFlipped ? -1 : 1;
+                this.p.ballNormalRotate = this.p.mirrored ? -gravityDir : gravityDir;
                 this.p.ballShouldRotate = true;
                 this.p.ballRotateOpposite = this.p.gravityFlipped;
                 this.p.ballHitPad = true;
@@ -4249,6 +4290,8 @@ if (this.p.isFlying || this.p.isUfo) {
               this.p.canJump = false;
               this.p.yVelocity = _fm * _padVel;
               if (this.p.isBall) {
+                const gravityDir = this.p.gravityFlipped ? -1 : 1;
+                this.p.ballNormalRotate = this.p.mirrored ? -gravityDir : gravityDir;
                 this.p.ballShouldRotate = true;
                 this.p.ballRotateOpposite = this.p.gravityFlipped;
                 this.p.ballHitPad = true;
@@ -4296,9 +4339,12 @@ if (this.p.isFlying || this.p.isUfo) {
                 this.p.canJump = false;
                 this.p.isJumping = false;
                 if (this.p.isBall) {
+                  const gravityDir = this.p.gravityFlipped ? -1 : 1;
+                  this.p.ballNormalRotate = this.p.mirrored ? -gravityDir : gravityDir;
                   this.p.ballShouldRotate = true;
                   this.p.ballRotateOpposite = false;
                   this.p.ballHitPad = true;
+                  this.p.ballRotation2 = 10;
                 }
                 this.runRotateAction();
                 _boostedThisStep = true;
@@ -4408,8 +4454,11 @@ if (this.p.isFlying || this.p.isUfo) {
                   this.p.wasBoosted = false;
                 }
                 if (this.p.isBall) {
+                  const gravityDir = this.p.gravityFlipped ? -1 : 1;
+                  this.p.ballNormalRotate = this.p.mirrored ? -gravityDir : gravityDir;
                   this.p.ballShouldRotate = true;
                   this.p.ballRotateOpposite = true;
+                  this.p.ballRotation2 = 10;
                 }
                 this.runRotateAction();
                 _boostedThisStep = true;
@@ -4466,6 +4515,9 @@ if (this.p.isFlying || this.p.isUfo) {
             const _hMinDist = gameObj.hitbox_radius + (this.p.isWave ? waveHitSize : playerSize);
             if (_hDistSq > _hMinDist * _hMinDist) continue;
           }
+          if (this.breakabletheblock(gameObj)) {
+            continue;
+          }
           this.killPlayer();
           return;
         } else if (_colType === slopeType) {
@@ -4510,9 +4562,14 @@ if (this.p.isFlying || this.p.isUfo) {
           const _0xLandBot = (this.p.yVelocity <= 0 || this.p.onGround) && (_0x146a97 >= bottom || _0x869e42 >= bottom);
           const _0xLandTop = (this.p.yVelocity >= 0 || this.p.onGround) && (_0x3e7199 <= top || _0x135a9d <= top);
           const isstandingOnAPlatform = this.p.gravityFlipped ? _0xLandTop : _0xLandBot;
-          if (iscolliding && !isstandingOnAPlatform && !this.p.isBall) {
-            if (window.noClip) this.p.diedThisFrame = true;
-            if (window.noClip || gameObj.objid === 143) continue
+          if (iscolliding && !isstandingOnAPlatform) {
+            if (window.noClip) {
+
+              continue;
+            }
+            if (this.breakabletheblock(gameObj)) {
+              continue;
+            }
             this.killPlayer();
             return;
           }
@@ -4565,6 +4622,9 @@ if (this.p.isFlying || this.p.isUfo) {
             }
             if (!this.p.gravityFlipped && (_0x3e7199 <= top || _0x135a9d <= top) && this.p.yVelocity >= 0) {
               if (iscolliding) {
+                if (this.breakabletheblock(gameObj)) {
+                  continue;
+                }
                 this.killPlayer();
                 return;
               }
