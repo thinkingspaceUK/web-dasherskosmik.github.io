@@ -89,7 +89,7 @@ class AudioManager {
     return Number.isFinite(parsedOffset) ? parsedOffset : 0;
   }
   _shouldUsePracticeSong() {
-    return !!(this._scene?._practicedMode?.practiceMode && !window.practiceMusicBypass);
+    return !!(this._scene?._practicedMode?.practiceMode && !window.practiceMusicSync);
   }
   _getOfficialSongAudioPath(songKey = window.currentlevel?.[0]) {
     if (!songKey || !Array.isArray(window.allLevels)) return null;
@@ -523,7 +523,7 @@ class AudioManager {
     }
   }
   _ensureCorrectMusicMode() {
-    if (this._scene?._practiceMusicBypassChangePendingUntilRestart) return;
+    if (this._scene?._practiceMusicSyncChangePendingUntilRestart) return;
     if (this._pendingMusicLoadKey || this._pendingOnlineSongLoadKey) return;
     if (!this._music) return;
     const expectedSongKey = this._shouldUsePracticeSong() ? "StayInsideMe" : window.currentlevel?.[0];
